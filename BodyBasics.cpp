@@ -15,6 +15,9 @@
 #include <iostream>
 #include <windows.h>
 #include <atlstr.h>
+#include <math.h>
+
+#define PI 3.14159265359
 
 char com_port[] = "\\\\.\\COM3";
 DWORD COM_BAUD_RATE = CBR_9600;
@@ -393,17 +396,33 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                             {
                                 jointPoints[j] = BodyToScreen(joints[j].Position, width, height);
                             }
-                            Joint headJoint = joints[JointType_Head];
-                            x_data = joints[JointType_Head].Position.X;
-                            y_data = joints[JointType_Head].Position.Y;
-                            z_data = joints[JointType_Head].Position.Z;
-                            int magic_x = 0;
-                            int magic_y = 0;
+                            x_data = joints[JointType_SpineMid].Position.X;
+                            y_data = joints[JointType_SpineMid].Position.Y;
+                            z_data = joints[JointType_SpineMid].Position.Z;
+
+                            std::string debug_str;
+                            float x_axis = 0.0;
+                            float y_axis = 0.0;
+                            float z_axis = 0.0;
+                            if ((x_data * x_data + y_data * y_data + z_data * z_data) != 0) {
+                                x_axis = acos(x_data / sqrtf(x_data * x_data + y_data * y_data + z_data * z_data));
+                                y_axis = acos(y_data / sqrtf(x_data * x_data + y_data * y_data + z_data * z_data));
+                            }
+                            debug_str += to_string(180 * x_axis / PI);
+                            debug_str += " ";
+                            debug_str += to_string(acos(y_data / sqrtf(x_data * x_data + y_data * y_data + z_data * z_data)));
+                            debug_str += " ";
+                            debug_str += to_string(180 * y_axis / PI);
+                            debug_str += " ";
+                            debug_str += to_string(70 + 180 * z_axis / PI);
+                            debug_str += "\n";
+
+
                             my_data = "X";
-                            my_data += to_string(my_map(joints[JointType_Head].Position.X * 1000, 2000, -2000, 125, 55) + magic_x);
+                            my_data += to_string((int)(180 - 180 * x_axis / PI - 1));
                             my_data += "Y";
-                            my_data += to_string(my_map(joints[JointType_Head].Position.Y*1000, 2000, -2000, 120, 50) + magic_y);
-                            OutputDebugStringA(my_data.c_str());
+                            my_data += to_string((int)(180- 180 * y_axis / PI - 6));
+                            OutputDebugStringA(debug_str.c_str());
                             char * new_data = new char[my_data.size()];
                             for (int i = 0; i < my_data.size(); ++i) {
                                 new_data[i] = my_data[i];
