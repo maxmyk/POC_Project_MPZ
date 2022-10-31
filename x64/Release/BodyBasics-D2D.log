@@ -1,0 +1,12 @@
+﻿  BodyBasics.cpp
+  SimpleSerial.cpp
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.cpp(132,1): error C2511: 'bool SimpleSerial::WriteSerialPort(const char *)': overloaded member function not found in 'SimpleSerial'
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.h(16): message : see declaration of 'SimpleSerial'
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.cpp(137,17): error C2597: illegal reference to non-static member 'SimpleSerial::io_handler_'
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.h(20): message : see declaration of 'SimpleSerial::io_handler_'
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.cpp(138,18): error C2597: illegal reference to non-static member 'SimpleSerial::io_handler_'
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.h(20): message : see declaration of 'SimpleSerial::io_handler_'
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.cpp(138,32): error C2597: illegal reference to non-static member 'SimpleSerial::errors_'
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.h(22): message : see declaration of 'SimpleSerial::errors_'
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.cpp(138,42): error C2597: illegal reference to non-static member 'SimpleSerial::status_'
+D:\POC\Project\BodyBasics-D2D\SimpleSerial.h(21): message : see declaration of 'SimpleSerial::status_'
