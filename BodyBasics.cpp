@@ -19,7 +19,7 @@
 
 #define PI 3.14159265359
 
-char com_port[] = "\\\\.\\COM3";
+char com_port[] = "\\\\.\\COM11";
 DWORD COM_BAUD_RATE = CBR_9600;
 SimpleSerial Serial(com_port, COM_BAUD_RATE);
 bool con_flag = false;
@@ -370,18 +370,20 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
             GetClientRect(GetDlgItem(m_hWnd, IDC_VIDEOVIEW), &rct);
             int width = rct.right;
             int height = rct.bottom;
-
+            
             for (int i = 0; i < nBodyCount; ++i)
             {
                 IBody* pBody = ppBodies[i];
                 if (pBody)
                 {
+
                     BOOLEAN bTracked = false;
                     hr = pBody->get_IsTracked(&bTracked);
 
                     if (SUCCEEDED(hr) && bTracked)
                     {
-                        Joint joints[JointType_Count]; 
+
+                        Joint joints[JointType_Count];
                         D2D1_POINT_2F jointPoints[JointType_Count];
                         HandState leftHandState = HandState_Unknown;
                         HandState rightHandState = HandState_Unknown;
@@ -392,10 +394,6 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                         hr = pBody->GetJoints(_countof(joints), joints);
                         if (SUCCEEDED(hr))
                         {
-                            for (int j = 0; j < _countof(joints); ++j)
-                            {
-                                jointPoints[j] = BodyToScreen(joints[j].Position, width, height);
-                            }
                             x_data = joints[JointType_SpineMid].Position.X;
                             y_data = joints[JointType_SpineMid].Position.Y;
                             z_data = joints[JointType_SpineMid].Position.Z;
@@ -421,9 +419,9 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                             my_data = "X";
                             my_data += to_string((int)(180 - 180 * x_axis / PI - 1));
                             my_data += "Y";
-                            my_data += to_string((int)(180- 180 * y_axis / PI - 6));
+                            my_data += to_string((int)(180 - 180 * y_axis / PI - 6));
                             OutputDebugStringA(debug_str.c_str());
-                            char * new_data = new char[my_data.size()];
+                            char* new_data = new char[my_data.size()];
                             for (int i = 0; i < my_data.size(); ++i) {
                                 new_data[i] = my_data[i];
                             }
@@ -432,10 +430,44 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                                 Serial.WriteSerialPort(new_data);
                                 Sleep(15);
                             }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            for (int i = 0; i < nBodyCount; ++i)
+            {
+                IBody* pBody = ppBodies[i];
+                if (pBody)
+                {
+                    
+                    BOOLEAN bTracked = false;
+                    hr = pBody->get_IsTracked(&bTracked);
+
+                    if (SUCCEEDED(hr) && bTracked)
+                    {
+                        Joint joints[JointType_Count]; 
+                        D2D1_POINT_2F jointPoints[JointType_Count];
+                        HandState leftHandState = HandState_Unknown;
+                        HandState rightHandState = HandState_Unknown;
+
+                        pBody->get_HandLeftState(&leftHandState);
+                        pBody->get_HandRightState(&rightHandState);
+
+                        hr = pBody->GetJoints(_countof(joints), joints);
+                        if (SUCCEEDED(hr))
+                        {
+                            for (int j = 0; j < _countof(joints); ++j)
+                            {
+                                jointPoints[j] = BodyToScreen(joints[j].Position, width, height);
+                            }
+
                             DrawBody(joints, jointPoints);
                             DrawHand(leftHandState, jointPoints[JointType_HandLeft]);
                             DrawHand(rightHandState, jointPoints[JointType_HandRight]);
                         }
+                        
                     }
                 }
             }
