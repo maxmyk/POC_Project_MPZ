@@ -16,17 +16,21 @@
 #include <windows.h>
 #include <atlstr.h>
 #include <math.h>
+#include <vector>
 
 #define PI 3.14159265359
 
-char com_port[] = "\\\\.\\COM11";
+char com_port4[] = "\\\\.\\COM4";
 DWORD COM_BAUD_RATE = CBR_9600;
-SimpleSerial Serial(com_port, COM_BAUD_RATE);
-bool con_flag = false;
-string my_data;
-float x_data = 0.0;
-float y_data = 0.0;
-float z_data = 0.0;
+SimpleSerial Serial4(com_port4, COM_BAUD_RATE);
+bool con_flag4 = false;
+string my_data4;
+
+char com_port3[] = "\\\\.\\COM3";
+SimpleSerial Serial3(com_port3, COM_BAUD_RATE);
+bool con_flag3 = false;
+string my_data3;
+
 
 static const float c_JointThickness = 3.0f;
 static const float c_TrackedBoneThickness = 6.0f;
@@ -134,8 +138,12 @@ int CBodyBasics::Run(HINSTANCE hInstance, int nCmdShow)
         return 0;
     }
 
-    if (Serial.connected_) {
-        con_flag = true;
+    if (Serial3.connected_) {
+        con_flag3 = true;
+    }
+
+    if (Serial4.connected_) {
+        con_flag4 = true;
     }
 
 
@@ -167,7 +175,8 @@ int CBodyBasics::Run(HINSTANCE hInstance, int nCmdShow)
             DispatchMessageW(&msg);
         }
     }
-    Serial.CloseSerialPort();
+    Serial3.CloseSerialPort();
+    Serial4.CloseSerialPort();
     return static_cast<int>(msg.wParam);
 }
 
@@ -370,7 +379,8 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
             GetClientRect(GetDlgItem(m_hWnd, IDC_VIDEOVIEW), &rct);
             int width = rct.right;
             int height = rct.bottom;
-            
+
+            vector<tuple<float, float, float> > targets;
             for (int i = 0; i < nBodyCount; ++i)
             {
                 IBody* pBody = ppBodies[i];
@@ -382,7 +392,6 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
 
                     if (SUCCEEDED(hr) && bTracked)
                     {
-
                         Joint joints[JointType_Count];
                         D2D1_POINT_2F jointPoints[JointType_Count];
                         HandState leftHandState = HandState_Unknown;
@@ -393,46 +402,92 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
 
                         hr = pBody->GetJoints(_countof(joints), joints);
                         if (SUCCEEDED(hr))
-                        {
-                            x_data = joints[JointType_SpineMid].Position.X;
-                            y_data = joints[JointType_SpineMid].Position.Y;
-                            z_data = joints[JointType_SpineMid].Position.Z;
-
-                            std::string debug_str;
-                            float x_axis = 0.0;
-                            float y_axis = 0.0;
-                            float z_axis = 0.0;
-                            if ((x_data * x_data + y_data * y_data + z_data * z_data) != 0) {
-                                x_axis = acos(x_data / sqrtf(x_data * x_data + y_data * y_data + z_data * z_data));
-                                y_axis = acos(y_data / sqrtf(x_data * x_data + y_data * y_data + z_data * z_data));
-                            }
-                            debug_str += to_string(180 * x_axis / PI);
-                            debug_str += " ";
-                            debug_str += to_string(acos(y_data / sqrtf(x_data * x_data + y_data * y_data + z_data * z_data)));
-                            debug_str += " ";
-                            debug_str += to_string(180 * y_axis / PI);
-                            debug_str += " ";
-                            debug_str += to_string(70 + 180 * z_axis / PI);
-                            debug_str += "\n";
-
-
-                            my_data = "X";
-                            my_data += to_string((int)(180 - 180 * x_axis / PI - 1));
-                            my_data += "Y";
-                            my_data += to_string((int)(180 - 180 * y_axis / PI - 6));
-                            OutputDebugStringA(debug_str.c_str());
-                            char* new_data = new char[my_data.size()];
-                            for (int i = 0; i < my_data.size(); ++i) {
-                                new_data[i] = my_data[i];
-                            }
-                            if (con_flag) {
-                                OutputDebugStringA("Connected!!!");
-                                Serial.WriteSerialPort(new_data);
-                                Sleep(15);
-                            }
+                        {   
+                            float x_data = joints[JointType_SpineMid].Position.X;
+                            float y_data = joints[JointType_SpineMid].Position.Y;
+                            float z_data = joints[JointType_SpineMid].Position.Z;
+                            targets.push_back(make_tuple(x_data, y_data, z_data));
                         }
-                        break;
                     }
+                }
+            }
+            if (targets.size() != 0) {
+
+                // 3 port
+
+                float x_data3 = get<0>(targets[0]);
+                float y_data3 = get<1>(targets[0]);
+                float z_data3 = get<2>(targets[0]);
+
+                std::string debug_str3;
+                float x_axis3 = 0.0;
+                float y_axis3 = 0.0;
+                float z_axis3 = 0.0;
+                if ((x_data3 * x_data3 + y_data3 * y_data3 + z_data3 * z_data3) != 0) {
+                    x_axis3 = acos(x_data3 / sqrtf(x_data3 * x_data3 + y_data3 * y_data3 + z_data3 * z_data3));
+                    y_axis3 = acos(y_data3 / sqrtf(x_data3 * x_data3 + y_data3 * y_data3 + z_data3 * z_data3));
+                }
+                debug_str3 += to_string(180 * x_axis3 / PI);
+                debug_str3 += " ";
+                debug_str3 += to_string(180 * y_axis3 / PI);
+                debug_str3 += " ";
+                debug_str3 += to_string(70 + 180 * z_axis3 / PI);
+                debug_str3 += "\n";
+
+
+                my_data3 = "X";
+                my_data3 += to_string((int)(180 - 180 * x_axis3 / PI - 1));
+                my_data3 += "Y";
+                my_data3 += to_string((int)(180 - 180 * y_axis3 / PI - 6));
+                OutputDebugStringA(debug_str3.c_str());
+                char* new_data3 = new char[my_data3.size()];
+                for (int i = 0; i < my_data3.size(); ++i) {
+                    new_data3[i] = my_data3[i];
+                }
+
+                // 4 port
+
+                float x_data4 = get<0>(targets[targets.size() - 1]);
+                float y_data4 = get<1>(targets[targets.size() - 1]);
+                float z_data4 = get<2>(targets[targets.size() - 1]);
+
+                std::string debug_str4;
+                float x_axis4 = 0.0;
+                float y_axis4 = 0.0;
+                float z_axis4 = 0.0;
+                if ((x_data4 * x_data4 + y_data4 * y_data4 + z_data4 * z_data4) != 0) {
+                    x_axis4 = acos(x_data4 / sqrtf(x_data4 * x_data4 + y_data4 * y_data4 + z_data4 * z_data4));
+                    y_axis4 = acos(y_data4 / sqrtf(x_data4 * x_data4 + y_data4 * y_data4 + z_data4 * z_data4));
+                }
+                debug_str4 += to_string(180 * x_axis4 / PI);
+                debug_str4 += " ";
+                debug_str4 += to_string(180 * y_axis4 / PI);
+                debug_str4 += " ";
+                debug_str4 += to_string(70 + 180 * z_axis4 / PI);
+                debug_str4 += "\n";
+
+
+                my_data4 = "X";
+                my_data4 += to_string((int)(180 - 180 * x_axis4 / PI - 1));
+                my_data4 += "Y";
+                my_data4 += to_string((int)(180 - 180 * y_axis4 / PI - 6));
+                OutputDebugStringA(debug_str4.c_str());
+                char* new_data4 = new char[my_data4.size()];
+                for (int i = 0; i < my_data4.size(); ++i) {
+                    new_data4[i] = my_data4[i];
+                }
+
+                // data send
+
+                if (con_flag3) {
+                    OutputDebugStringA("Connected 3 PORT!!!");
+                    Serial3.WriteSerialPort(new_data3);
+                }
+
+                if (con_flag4) {
+                    OutputDebugStringA("Connected 4 PORT!!!");
+                    Serial4.WriteSerialPort(new_data4);
+                    Sleep(15);
                 }
             }
 
@@ -503,11 +558,22 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
             }
         }
 
+        /*
         TCHAR szStatusMessage[128];
         TCHAR* pszFormat = TEXT(" FPS = %0.2f    Time = %I64d    Message = %s   X = %0.3f  Y = %0.3f  Z = %0.3f");
         TCHAR my_txt[16];
         _tcscpy_s(my_txt, CA2T(my_data.c_str()));
         StringCchPrintf(szStatusMessage, _countof(szStatusMessage), pszFormat, fps, (nTime - m_nStartTime),my_txt, x_data, y_data, z_data);
+
+        if (SetStatusMessage(szStatusMessage, 1000, false))
+        {
+            m_nLastCounter = qpcNow.QuadPart;
+            m_nFramesSinceUpdate = 0;
+        }
+        */
+        TCHAR szStatusMessage[128];
+        TCHAR* pszFormat = TEXT(" FPS = %0.2f    Time = %I64d");
+        StringCchPrintf(szStatusMessage, _countof(szStatusMessage), pszFormat, fps, (nTime - m_nStartTime));
 
         if (SetStatusMessage(szStatusMessage, 1000, false))
         {
