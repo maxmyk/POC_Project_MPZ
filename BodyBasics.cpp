@@ -17,6 +17,7 @@
 #include <atlstr.h>
 #include <math.h>
 #include <vector>
+#include <algorithm>
 
 #define PI 3.14159265359
 
@@ -411,6 +412,8 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                     }
                 }
             }
+            std::sort(targets.begin(), targets.end());
+
             if (targets.size() != 0) {
 
                 // 3 port
