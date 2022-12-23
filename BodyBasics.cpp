@@ -20,16 +20,16 @@
 
 #define PI 3.14159265359
 
-char com_port4[] = "\\\\.\\COM4";
+char com_port2[] = "\\\\.\\COM4";
 DWORD COM_BAUD_RATE = CBR_9600;
-SimpleSerial Serial4(com_port4, COM_BAUD_RATE);
-bool con_flag4 = false;
-string my_data4;
+SimpleSerial Serial2(com_port2, COM_BAUD_RATE);
+bool con_flag2 = false;
+string my_data2;
 
-char com_port3[] = "\\\\.\\COM3";
-SimpleSerial Serial3(com_port3, COM_BAUD_RATE);
-bool con_flag3 = false;
-string my_data3;
+char com_port1[] = "\\\\.\\COM3";
+SimpleSerial Serial1(com_port1, COM_BAUD_RATE);
+bool con_flag1 = false;
+string my_data1;
 
 
 static const float c_JointThickness = 3.0f;
@@ -138,12 +138,12 @@ int CBodyBasics::Run(HINSTANCE hInstance, int nCmdShow)
         return 0;
     }
 
-    if (Serial3.connected_) {
-        con_flag3 = true;
+    if (Serial1.connected_) {
+        con_flag1 = true;
     }
 
-    if (Serial4.connected_) {
-        con_flag4 = true;
+    if (Serial2.connected_) {
+        con_flag2 = true;
     }
 
 
@@ -175,8 +175,8 @@ int CBodyBasics::Run(HINSTANCE hInstance, int nCmdShow)
             DispatchMessageW(&msg);
         }
     }
-    Serial3.CloseSerialPort();
-    Serial4.CloseSerialPort();
+    Serial1.CloseSerialPort();
+    Serial2.CloseSerialPort();
     return static_cast<int>(msg.wParam);
 }
 
@@ -415,78 +415,78 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
 
                 // 3 port
 
-                float x_data3 = get<0>(targets[0]);
-                float y_data3 = get<1>(targets[0]);
-                float z_data3 = get<2>(targets[0]);
+                float x_data1 = get<0>(targets[0]);
+                float y_data1 = get<1>(targets[0]);
+                float z_data1 = get<2>(targets[0]);
 
-                std::string debug_str3;
-                float x_axis3 = 0.0;
-                float y_axis3 = 0.0;
-                float z_axis3 = 0.0;
-                if ((x_data3 * x_data3 + y_data3 * y_data3 + z_data3 * z_data3) != 0) {
-                    x_axis3 = acos(x_data3 / sqrtf(x_data3 * x_data3 + y_data3 * y_data3 + z_data3 * z_data3));
-                    y_axis3 = acos(y_data3 / sqrtf(x_data3 * x_data3 + y_data3 * y_data3 + z_data3 * z_data3));
+                std::string debug_str1;
+                float x_axis1 = 0.0;
+                float y_axis1 = 0.0;
+                float z_axis1 = 0.0;
+                if ((x_data1 * x_data1 + y_data1 * y_data1 + z_data1 * z_data1) != 0) {
+                    x_axis1 = acos(x_data1 / sqrtf(x_data1 * x_data1 + y_data1 * y_data1 + z_data1 * z_data1));
+                    y_axis1 = acos(y_data1 / sqrtf(x_data1 * x_data1 + y_data1 * y_data1 + z_data1 * z_data1));
                 }
-                debug_str3 += to_string(180 * x_axis3 / PI);
-                debug_str3 += " ";
-                debug_str3 += to_string(180 * y_axis3 / PI);
-                debug_str3 += " ";
-                debug_str3 += to_string(70 + 180 * z_axis3 / PI);
-                debug_str3 += "\n";
+                debug_str1 += to_string(180 * x_axis1 / PI);
+                debug_str1 += " ";
+                debug_str1 += to_string(180 * y_axis1 / PI);
+                debug_str1 += " ";
+                debug_str1 += to_string(70 + 180 * z_axis1 / PI);
+                debug_str1 += "\n";
 
 
-                my_data3 = "X";
-                my_data3 += to_string((int)(180 - 180 * x_axis3 / PI - 1));
-                my_data3 += "Y";
-                my_data3 += to_string((int)(180 - 180 * y_axis3 / PI - 6));
-                OutputDebugStringA(debug_str3.c_str());
-                char* new_data3 = new char[my_data3.size()];
-                for (int i = 0; i < my_data3.size(); ++i) {
-                    new_data3[i] = my_data3[i];
+                my_data1 = "X";
+                my_data1 += to_string((int)(180 - 180 * x_axis1 / PI - 1));
+                my_data1 += "Y";
+                my_data1 += to_string((int)(180 - 180 * y_axis1 / PI - 6));
+                OutputDebugStringA(debug_str1.c_str());
+                char* new_data1 = new char[my_data1.size()];
+                for (int i = 0; i < my_data1.size(); ++i) {
+                    new_data1[i] = my_data1[i];
                 }
 
                 // 4 port
 
-                float x_data4 = get<0>(targets[targets.size() - 1]);
-                float y_data4 = get<1>(targets[targets.size() - 1]);
-                float z_data4 = get<2>(targets[targets.size() - 1]);
+                float x_data2 = get<0>(targets[targets.size() - 1]);
+                float y_data2 = get<1>(targets[targets.size() - 1]);
+                float z_data2 = get<2>(targets[targets.size() - 1]);
 
-                std::string debug_str4;
-                float x_axis4 = 0.0;
-                float y_axis4 = 0.0;
-                float z_axis4 = 0.0;
-                if ((x_data4 * x_data4 + y_data4 * y_data4 + z_data4 * z_data4) != 0) {
-                    x_axis4 = acos(x_data4 / sqrtf(x_data4 * x_data4 + y_data4 * y_data4 + z_data4 * z_data4));
-                    y_axis4 = acos(y_data4 / sqrtf(x_data4 * x_data4 + y_data4 * y_data4 + z_data4 * z_data4));
+                std::string debug_str2;
+                float x_axis2 = 0.0;
+                float y_axis2 = 0.0;
+                float z_axis2 = 0.0;
+                if ((x_data2 * x_data2 + y_data2 * y_data2 + z_data2 * z_data2) != 0) {
+                    x_axis2 = acos(x_data2 / sqrtf(x_data2 * x_data2 + y_data2 * y_data2 + z_data2 * z_data2));
+                    y_axis2 = acos(y_data2 / sqrtf(x_data2 * x_data2 + y_data2 * y_data2 + z_data2 * z_data2));
                 }
-                debug_str4 += to_string(180 * x_axis4 / PI);
-                debug_str4 += " ";
-                debug_str4 += to_string(180 * y_axis4 / PI);
-                debug_str4 += " ";
-                debug_str4 += to_string(70 + 180 * z_axis4 / PI);
-                debug_str4 += "\n";
+                debug_str2 += to_string(180 * x_axis2 / PI);
+                debug_str2 += " ";
+                debug_str2 += to_string(180 * y_axis2 / PI);
+                debug_str2 += " ";
+                debug_str2 += to_string(70 + 180 * z_axis2 / PI);
+                debug_str2 += "\n";
 
 
-                my_data4 = "X";
-                my_data4 += to_string((int)(180 - 180 * x_axis4 / PI - 1));
-                my_data4 += "Y";
-                my_data4 += to_string((int)(180 - 180 * y_axis4 / PI - 6));
-                OutputDebugStringA(debug_str4.c_str());
-                char* new_data4 = new char[my_data4.size()];
-                for (int i = 0; i < my_data4.size(); ++i) {
-                    new_data4[i] = my_data4[i];
+                my_data2 = "X";
+                my_data2 += to_string((int)(180 - 180 * x_axis2 / PI - 1));
+                my_data2 += "Y";
+                my_data2 += to_string((int)(180 - 180 * y_axis2 / PI - 6));
+                OutputDebugStringA(debug_str2.c_str());
+                char* new_data2 = new char[my_data2.size()];
+                for (int i = 0; i < my_data2.size(); ++i) {
+                    new_data2[i] = my_data2[i];
                 }
 
                 // data send
 
-                if (con_flag3) {
+                if (con_flag1) {
                     OutputDebugStringA("Connected 3 PORT!!!");
-                    Serial3.WriteSerialPort(new_data3);
+                    Serial1.WriteSerialPort(new_data1);
                 }
 
-                if (con_flag4) {
+                if (con_flag2) {
                     OutputDebugStringA("Connected 4 PORT!!!");
-                    Serial4.WriteSerialPort(new_data4);
+                    Serial2.WriteSerialPort(new_data2);
                     Sleep(15);
                 }
             }
