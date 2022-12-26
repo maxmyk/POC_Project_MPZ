@@ -21,13 +21,13 @@
 
 #define PI 3.14159265359
 
-char com_port2[] = "\\\\.\\COM4";
+char com_port2[] = "\\\\.\\COM5";
 DWORD COM_BAUD_RATE = CBR_9600;
 SimpleSerial Serial2(com_port2, COM_BAUD_RATE);
 bool con_flag2 = false;
 string my_data2;
 
-char com_port1[] = "\\\\.\\COM3";
+char com_port1[] = "\\\\.\\COM6";
 SimpleSerial Serial1(com_port1, COM_BAUD_RATE);
 bool con_flag1 = false;
 string my_data1;
@@ -381,7 +381,7 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
             int width = rct.right;
             int height = rct.bottom;
 
-            vector<tuple<float, float, float> > targets;
+            vector<tuple<float, float, float, bool> > targets;
             for (int i = 0; i < nBodyCount; ++i)
             {
                 IBody* pBody = ppBodies[i];
@@ -407,7 +407,13 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                             float x_data = joints[JointType_SpineMid].Position.X;
                             float y_data = joints[JointType_SpineMid].Position.Y;
                             float z_data = joints[JointType_SpineMid].Position.Z;
-                            targets.push_back(make_tuple(x_data, y_data, z_data));
+                            bool isEnemy = false;
+                            if (leftHandState == 3 || rightHandState == 3) {
+                                targets.push_back(make_tuple(x_data, y_data, z_data, true));
+                            }
+                            else {
+                                targets.push_back(make_tuple(x_data, y_data, z_data, false));
+                            }
                         }
                     }
                 }
@@ -421,6 +427,7 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                 float x_data1 = get<0>(targets[0]);
                 float y_data1 = get<1>(targets[0]);
                 float z_data1 = get<2>(targets[0]);
+                bool state1 = get<3>(targets[0]);
 
                 std::string debug_str1;
                 float x_axis1 = 0.0;
@@ -430,18 +437,18 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                     x_axis1 = acos(x_data1 / sqrtf(x_data1 * x_data1 + y_data1 * y_data1 + z_data1 * z_data1));
                     y_axis1 = acos(y_data1 / sqrtf(x_data1 * x_data1 + y_data1 * y_data1 + z_data1 * z_data1));
                 }
-                debug_str1 += to_string(180 * x_axis1 / PI);
+                debug_str1 += to_string(120 * x_axis1 / PI);
                 debug_str1 += " ";
-                debug_str1 += to_string(180 * y_axis1 / PI);
+                debug_str1 += to_string((120 - 120 * y_axis1) / PI);
                 debug_str1 += " ";
                 debug_str1 += to_string(70 + 180 * z_axis1 / PI);
                 debug_str1 += "\n";
 
-
-                my_data1 = "X";
-                my_data1 += to_string((int)(180 - 180 * x_axis1 / PI - 1));
+                if (state1) {my_data1 = "L1X";}
+                else { my_data1 = "X";}
+                my_data1 += to_string((int)(120 - 120 * x_axis1 / PI - 1));
                 my_data1 += "Y";
-                my_data1 += to_string((int)(180 - 180 * y_axis1 / PI - 6));
+                my_data1 += to_string((int)(120 * y_axis1 / PI - 6));
                 OutputDebugStringA(debug_str1.c_str());
                 char* new_data1 = new char[my_data1.size()];
                 for (int i = 0; i < my_data1.size(); ++i) {
@@ -453,6 +460,7 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                 float x_data2 = get<0>(targets[targets.size() - 1]);
                 float y_data2 = get<1>(targets[targets.size() - 1]);
                 float z_data2 = get<2>(targets[targets.size() - 1]);
+                bool state2 = get<3>(targets[targets.size() - 1]);
 
                 std::string debug_str2;
                 float x_axis2 = 0.0;
@@ -462,18 +470,19 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
                     x_axis2 = acos(x_data2 / sqrtf(x_data2 * x_data2 + y_data2 * y_data2 + z_data2 * z_data2));
                     y_axis2 = acos(y_data2 / sqrtf(x_data2 * x_data2 + y_data2 * y_data2 + z_data2 * z_data2));
                 }
-                debug_str2 += to_string(180 * x_axis2 / PI);
+                debug_str2 += to_string(120 * x_axis2 / PI);
                 debug_str2 += " ";
-                debug_str2 += to_string(180 * y_axis2 / PI);
+                debug_str2 += to_string((120 - 120 * y_axis2) / PI);
                 debug_str2 += " ";
                 debug_str2 += to_string(70 + 180 * z_axis2 / PI);
                 debug_str2 += "\n";
 
 
-                my_data2 = "X";
-                my_data2 += to_string((int)(180 - 180 * x_axis2 / PI - 1));
+                if (state2) { my_data2 = "L1X"; }
+                else { my_data2 = "X"; }
+                my_data2 += to_string((int)(120 - 120 * x_axis2 / PI - 1));
                 my_data2 += "Y";
-                my_data2 += to_string((int)(180 - 180 * y_axis2 / PI - 6));
+                my_data2 += to_string((int)(120 * y_axis2 / PI - 6));
                 OutputDebugStringA(debug_str2.c_str());
                 char* new_data2 = new char[my_data2.size()];
                 for (int i = 0; i < my_data2.size(); ++i) {
