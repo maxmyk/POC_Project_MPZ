@@ -6,23 +6,25 @@
 #include <tuple>
 #include "stdafx.h"
 #include "SimpleSerial.h"
+//#include <opencv2/opencv.hpp>
 
 #define PI 3.14159265359
 
 char com_port2[] = "\\\\.\\COM6";
 DWORD COM_BAUD_RATE = CBR_9600;
 SimpleSerial Serial2(com_port2, COM_BAUD_RATE);
-bool con_flag2 = false;
 std::string my_data2;
 
-char com_port1[] = "\\\\.\\COM4";
+char com_port1[] = "\\\\.\\COM7";
 SimpleSerial Serial1(com_port1, COM_BAUD_RATE);
-bool con_flag1 = false;
 std::string my_data1;
-    
+
+char com_port3[] = "\\\\.\\COM3";
+SimpleSerial Serial3(com_port3, COM_BAUD_RATE);
+
 IBodyFrameSource* pBodyFrameSource = nullptr;
 
-void colorFrame(IKinectSensor* pSensor, std::vector<std::tuple<CameraSpacePoint, bool> >&targets) {
+void colorFrame(IKinectSensor* pSensor, std::vector<std::tuple<float, float, float, bool> >& targets) {
     HRESULT hr = S_OK;
     IColorFrameSource* pColorFrameSource = nullptr;
     hr = pSensor->get_ColorFrameSource(&pColorFrameSource);
@@ -36,37 +38,15 @@ void colorFrame(IKinectSensor* pSensor, std::vector<std::tuple<CameraSpacePoint,
             hr = pColorFrameReader->AcquireLatestFrame(&pColorFrame);
             if (SUCCEEDED(hr))
             {
-                UINT colorBufferSize = 0;
+                int colorWidth = 1920;
+                int colorHeight = 1080;
+                UINT colorBufferSize = colorWidth * colorHeight * 4;
                 BYTE* pColorBuffer = nullptr;
                 hr = pColorFrame->AccessRawUnderlyingBuffer(&colorBufferSize, &pColorBuffer);
+                hr = pColorFrame->CopyConvertedFrameDataToArray(colorBufferSize, pColorBuffer, ColorImageFormat_Rgba);
+                int b = int(pColorBuffer[0]);
                 int a = 1;
-
-                if (SUCCEEDED(hr))
-                {
-                    int colorWidth = 1440;
-                    int colorHeight = 720;
-
-                    ICoordinateMapper* pCoordinateMapper = nullptr;
-                    pSensor->get_CoordinateMapper(&pCoordinateMapper);
-
-                    for (auto & target: targets) {
-                        ColorSpacePoint colorSpacePoint;
-                        pCoordinateMapper->MapCameraPointToColorSpace(get<0>(target), &colorSpacePoint);
-
-                        int x = (int)(colorSpacePoint.X + 0.5f);
-                        int y = (int)(colorSpacePoint.Y + 0.5f);
-
-                        if (x >= 0 && x < colorWidth && y >= 0 && y < colorHeight) {
-                            int index = (y * colorWidth + x) * 4;
-                            unsigned char red = pColorBuffer[index + 2];
-                            unsigned char green = pColorBuffer[index + 1];
-                            unsigned char blue = pColorBuffer[index];
-                            if (red > 200 && green > 200 &&  blue > 200) {
-                                get<1>(target) = true;
-                            }
-                        }
-                    }
-                }
+                
                 SafeRelease(pColorFrame);
             }
         }
@@ -74,24 +54,17 @@ void colorFrame(IKinectSensor* pSensor, std::vector<std::tuple<CameraSpacePoint,
  
 }
 
-void toStream(std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
-    //std::sort(targets.begin(), targets.end());
-    if (Serial1.connected_) {
-        con_flag1 = true;
-    }
-
-    if (Serial2.connected_) {
-        con_flag2 = true;
-    }
+void toStream(std::vector<std::tuple<float, float, float, bool> > &targets) {
+    std::sort(targets.begin(), targets.end());
 
     if (targets.size() != 0) {
 
         // 3 port
 
-        float x_data1 = get<0>(targets[0]).X;
-        float y_data1 = get<0>(targets[0]).Y;
-        float z_data1 = get<0>(targets[0]).Z;
-        bool state1 = get<1>(targets[0]);
+        float x_data1 = get<0>(targets[0]);
+        float y_data1 = get<1>(targets[0]);
+        float z_data1 = get<2>(targets[0]);
+        bool state1 = get<3>(targets[0]);
 
         std::string debug_str1;
         float x_axis1 = 0.0;
@@ -121,10 +94,10 @@ void toStream(std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
 
         // 4 port
 
-        float x_data2 = get<0>(targets[targets.size() - 1]).X;
-        float y_data2 = get<0>(targets[targets.size() - 1]).Y;
-        float z_data2 = get<0>(targets[targets.size() - 1]).Z;
-        bool state2 = get<1>(targets[targets.size() - 1]);
+        float x_data2 = get<0>(targets[targets.size() - 1]);
+        float y_data2 = get<1>(targets[targets.size() - 1]);
+        float z_data2 = get<2>(targets[targets.size() - 1]);
+        bool state2 = get<3>(targets[targets.size() - 1]);
 
         std::string debug_str2;
         float x_axis2 = 0.0;
@@ -155,15 +128,14 @@ void toStream(std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
 
         // data send
 
-        if (con_flag1) {
-            OutputDebugStringA("Connected 3 PORT!!!");
+        if (Serial1.connected_) {
+            OutputDebugStringA("Connected 5 PORT!!!");
             Serial1.WriteSerialPort(new_data1);
         }
 
-        if (con_flag2) {
+        if (Serial2.connected_) {
             OutputDebugStringA("Connected 6 PORT!!!");
             Serial2.WriteSerialPort(new_data2);
-            
         }
         Sleep(15);
     }
@@ -173,6 +145,19 @@ void toStream(std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+    while (!Serial1.connected_ && !Serial2.connected_ && !Serial3.connected_) {
+        ;
+    }
+    
+    while (1) {
+        int reply_wait_time = 1;
+        string syntax_type = "greater_less_than";
+
+        string incoming = Serial3.ReadSerialPort(reply_wait_time, syntax_type);
+        if (incoming == "S")
+            break;
+    }
+
     IKinectSensor* pSensor = nullptr;
     HRESULT hr = S_OK;
     hr = GetDefaultKinectSensor(&pSensor);
@@ -203,7 +188,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             hr = pBodyFrame->GetAndRefreshBodyData(BODY_COUNT, pBody);
             if (SUCCEEDED(hr))
             {
-                std::vector<std::tuple<CameraSpacePoint, bool> > targets;
+                std::vector<std::tuple<float, float, float, bool> > targets;
+                //std::vector<std::tuple<float, float, float, bool> > targets;
                 for (int i = 0; i < BODY_COUNT; ++i)
                 {
                     IBody* Body = pBody[i];
@@ -225,7 +211,17 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
                             hr = Body->GetJoints(_countof(joints), joints);
                             if (SUCCEEDED(hr))
                             {
-                                targets.push_back(std::make_tuple(joints[JointType_SpineMid].Position, false));
+                                float x = joints[JointType_SpineShoulder].Position.X;
+                                float y = joints[JointType_SpineShoulder].Position.Y;
+                                float z = joints[JointType_SpineShoulder].Position.Z;
+
+                                if (leftHandState == 3 || rightHandState == 3) {
+                                    targets.push_back(std::make_tuple(x, y, z, true));
+                                }
+                                else {
+                                    targets.push_back(std::make_tuple(x, y, z, false));
+                                }
+                                
                             }
                         }
                     }
