@@ -25,16 +25,12 @@ void loop() {
 
 void serialEvent() {
   serialData = Serial.readString();
-  int values[4];
+  int values[5];
   int* values_a = parseDataM(serialData);
-  for(int i=0; i<4; i++)
+  for(int i=0; i<5; i++)
     values[i] = values_a[i];
-  if (values[0] != -1){
-    for(int i = 0; i < 4; ++i){
-      if (EEPROM.read(i) != values[i]){
-        EEPROM.write(i, values[i]);
-      }
-    }
+  if (values[5]){
+    writeValuesToEEPROM(values);
   }
   if(parseDataD(serialData)){
     digitalWrite(11, parseDataL(serialData));
@@ -61,21 +57,28 @@ int parseDataY(String data) {
   return data.toInt();
 }
 
-int* parseDataM(String data) {
-  static int values[4];
-  values[0] = -1;
+int* parseDataM(String data){
+  static int values[5];
+  values[5] = 0;
   if (data[0] == 'M') {
     int index = 0;
     String currentValue = "";
+    bool negative = false;
+    values[5] = 1;
     for (int i = 2; i < data.length(); i++) {
+      if(data[i] == '-'){
+        negative = true;
+        continue;
+      }
       if (data[i] == ',') {
-        values[index++] = currentValue.toInt();
+        values[index++] = (negative) ? -currentValue.toInt(): currentValue.toInt();
         currentValue = "";
+        negative = false;
       } else {
         currentValue += data[i];
       }
     }
-    values[index] = currentValue.toInt();
+    values[index] = (negative) ? -currentValue.toInt(): currentValue.toInt();
   }
   return values;
 }
@@ -85,8 +88,10 @@ int parseDataD(String data) {
   if (data[0] == 'D') {
     ans = 0;
     Serial.print('<');
-    for(int i = 0; i < 4; ++i){
-      Serial.print(EEPROM.read(i));
+    for (int i = 0; i < 4; ++i) {
+      byte sign = EEPROM.read(i * 2);
+      byte value = EEPROM.read(i * 2 + 1);
+      Serial.print((sign == 1) ? -value : value);
       if(i<3)
         Serial.print(',');
     }
@@ -94,3 +99,14 @@ int parseDataD(String data) {
   }
   return ans;
 }
+
+void writeValuesToEEPROM(int* values) {
+  for (int i = 0; i < 4; i++) {
+    int value = values[i];
+    byte sign = (value < 0) ? 1 : 0;
+    value = abs(value);
+    EEPROM.write(i * 2, sign);
+    EEPROM.write(i * 2 + 1, (byte)value);
+  }
+}
+
