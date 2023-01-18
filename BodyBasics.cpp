@@ -6,7 +6,6 @@
 #include <tuple>
 #include "stdafx.h"
 #include "SimpleSerial.h"
-//#include <opencv2/opencv.hpp>
 
 #define PI 3.14159265359
 
@@ -24,47 +23,109 @@ SimpleSerial Serial3(com_port3, COM_BAUD_RATE);
 
 IBodyFrameSource* pBodyFrameSource = nullptr;
 
-void colorFrame(IKinectSensor* pSensor, std::vector<std::tuple<float, float, float, bool> >& targets) {
+void colorFrame(IKinectSensor* pSensor, std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
     HRESULT hr = S_OK;
     IColorFrameSource* pColorFrameSource = nullptr;
     hr = pSensor->get_ColorFrameSource(&pColorFrameSource);
+    RGBQUAD* m_pColorRGBX;
+    m_pColorRGBX = new RGBQUAD[1920 * 1080];
     if (SUCCEEDED(hr))
     {
         IColorFrameReader* pColorFrameReader = nullptr;
         hr = pColorFrameSource->OpenReader(&pColorFrameReader);
         if (SUCCEEDED(hr))
         {
-            IColorFrame* pColorFrame = nullptr;
+            IColorFrame* pColorFrame = NULL;
             hr = pColorFrameReader->AcquireLatestFrame(&pColorFrame);
             if (SUCCEEDED(hr))
             {
-                int colorWidth = 1920;
-                int colorHeight = 1080;
-                UINT colorBufferSize = colorWidth * colorHeight * 4;
-                BYTE* pColorBuffer = nullptr;
-                hr = pColorFrame->AccessRawUnderlyingBuffer(&colorBufferSize, &pColorBuffer);
-                hr = pColorFrame->CopyConvertedFrameDataToArray(colorBufferSize, pColorBuffer, ColorImageFormat_Rgba);
-                int b = int(pColorBuffer[0]);
-                int a = 1;
+                INT64 nTime = 0;
+                IFrameDescription* pFrameDescription = NULL;
+                int nWidth = 0;
+                int nHeight = 0;
+                ColorImageFormat imageFormat = ColorImageFormat_None;
+                UINT nBufferSize = 0;
+                RGBQUAD* pBuffer = NULL;
+
+                hr = pColorFrame->get_RelativeTime(&nTime);
+
+                if (SUCCEEDED(hr))
+                {
+                    hr = pColorFrame->get_FrameDescription(&pFrameDescription);
+                }
+
+                if (SUCCEEDED(hr))
+                {
+                    hr = pFrameDescription->get_Width(&nWidth);
+                }
+
+                if (SUCCEEDED(hr))
+                {
+                    hr = pFrameDescription->get_Height(&nHeight);
+                }
+
+                if (SUCCEEDED(hr))
+                {
+                    hr = pColorFrame->get_RawColorImageFormat(&imageFormat);
+                }
+                if (SUCCEEDED(hr))
+                {
+                    if (imageFormat == ColorImageFormat_Bgra)
+                    {
+                        hr = pColorFrame->AccessRawUnderlyingBuffer(&nBufferSize, reinterpret_cast<BYTE**>(&pBuffer));
+                    }
+                    else if (m_pColorRGBX)
+                    {
+                        pBuffer = m_pColorRGBX;
+                        nBufferSize = 1920 * 1080 * sizeof(RGBQUAD);
+                        hr = pColorFrame->CopyConvertedFrameDataToArray(nBufferSize, reinterpret_cast<BYTE*>(pBuffer), ColorImageFormat_Rgba);
+                    }
+                    else
+                    {
+                        hr = E_FAIL;
+                    }
+                }
                 
+                for (auto& target : targets) {
+                    ICoordinateMapper* pCoordinateMapper = nullptr;
+                    pSensor->get_CoordinateMapper(&pCoordinateMapper);
+
+                    ColorSpacePoint colorSpacePoint;
+                    pCoordinateMapper->MapCameraPointToColorSpace(get<0>(target), &colorSpacePoint);
+
+                    int x = (int)(colorSpacePoint.X + 0.5f);
+                    int y = (int)(colorSpacePoint.Y + 0.5f);
+
+                    if (x >= 0 && x < nWidth && y >= 0 && y < nHeight) {
+                        int index = (y * nWidth + x);
+                        int red = int(pBuffer[index].rgbBlue);
+                        int green = int(pBuffer[index].rgbGreen);
+                        int blue = int(pBuffer[index].rgbRed);
+                        string data = "";
+                        data += to_string(red) + ' ' + to_string(green) + ' ' + to_string(blue) + '\n';
+                        OutputDebugStringA(data.c_str());
+                        if (red > 100 && blue < 70 && green < 70) {
+                            get<1>(target) = true;
+                        }
+                    }
+                }
                 SafeRelease(pColorFrame);
             }
         }
     }
- 
+    delete[] m_pColorRGBX;
 }
 
-void toStream(std::vector<std::tuple<float, float, float, bool> > &targets) {
-    std::sort(targets.begin(), targets.end());
+void toStream(std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
 
     if (targets.size() != 0) {
 
         // 3 port
 
-        float x_data1 = get<0>(targets[0]);
-        float y_data1 = get<1>(targets[0]);
-        float z_data1 = get<2>(targets[0]);
-        bool state1 = get<3>(targets[0]);
+        float x_data1 = get<0>(targets[0]).X;
+        float y_data1 = get<0>(targets[0]).Y;
+        float z_data1 = get<0>(targets[0]).Z;
+        bool state1 = get<1>(targets[0]);
 
         std::string debug_str1;
         float x_axis1 = 0.0;
@@ -86,7 +147,7 @@ void toStream(std::vector<std::tuple<float, float, float, bool> > &targets) {
         my_data1 += to_string((int)(120 - 120 * x_axis1 / PI - 1));
         my_data1 += "Y";
         my_data1 += to_string((int)(120 * y_axis1 / PI - 6));
-        OutputDebugStringA(debug_str1.c_str());
+        //OutputDebugStringA(debug_str1.c_str());
         char* new_data1 = new char[my_data1.size()];
         for (int i = 0; i < my_data1.size(); ++i) {
             new_data1[i] = my_data1[i];
@@ -94,10 +155,10 @@ void toStream(std::vector<std::tuple<float, float, float, bool> > &targets) {
 
         // 4 port
 
-        float x_data2 = get<0>(targets[targets.size() - 1]);
-        float y_data2 = get<1>(targets[targets.size() - 1]);
-        float z_data2 = get<2>(targets[targets.size() - 1]);
-        bool state2 = get<3>(targets[targets.size() - 1]);
+        float x_data2 = get<0>(targets[targets.size() - 1]).X;
+        float y_data2 = get<0>(targets[targets.size() - 1]).Y;
+        float z_data2 = get<0>(targets[targets.size() - 1]).Z;
+        bool state2 = get<1>(targets[targets.size() - 1]);
 
         std::string debug_str2;
         float x_axis2 = 0.0;
@@ -120,7 +181,7 @@ void toStream(std::vector<std::tuple<float, float, float, bool> > &targets) {
         my_data2 += to_string((int)(120 - 120 * x_axis2 / PI - 1));
         my_data2 += "Y";
         my_data2 += to_string((int)(120 * y_axis2 / PI - 6));
-        OutputDebugStringA(debug_str2.c_str());
+        //OutputDebugStringA(debug_str2.c_str());
         char* new_data2 = new char[my_data2.size()];
         for (int i = 0; i < my_data2.size(); ++i) {
             new_data2[i] = my_data2[i];
@@ -129,7 +190,7 @@ void toStream(std::vector<std::tuple<float, float, float, bool> > &targets) {
         // data send
 
         if (Serial1.connected_) {
-            OutputDebugStringA("Connected 5 PORT!!!");
+            OutputDebugStringA("Connected 7 PORT!!!");
             Serial1.WriteSerialPort(new_data1);
         }
 
@@ -188,8 +249,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             hr = pBodyFrame->GetAndRefreshBodyData(BODY_COUNT, pBody);
             if (SUCCEEDED(hr))
             {
-                std::vector<std::tuple<float, float, float, bool> > targets;
-                //std::vector<std::tuple<float, float, float, bool> > targets;
+                std::vector<std::tuple<CameraSpacePoint, bool> > targets;
                 for (int i = 0; i < BODY_COUNT; ++i)
                 {
                     IBody* Body = pBody[i];
@@ -211,17 +271,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
                             hr = Body->GetJoints(_countof(joints), joints);
                             if (SUCCEEDED(hr))
                             {
-                                float x = joints[JointType_SpineShoulder].Position.X;
-                                float y = joints[JointType_SpineShoulder].Position.Y;
-                                float z = joints[JointType_SpineShoulder].Position.Z;
-
-                                if (leftHandState == 3 || rightHandState == 3) {
-                                    targets.push_back(std::make_tuple(x, y, z, true));
-                                }
-                                else {
-                                    targets.push_back(std::make_tuple(x, y, z, false));
-                                }
-                                
+                                    targets.push_back(std::make_tuple(joints[JointType_SpineMid].Position, false));
                             }
                         }
                     }
