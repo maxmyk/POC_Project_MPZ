@@ -25,12 +25,12 @@ void loop() {
 
 void serialEvent() {
   serialData = Serial.readString();
-  int values[2];
+  int values[4];
   int* values_a = parseDataM(serialData);
-  for(int i=0; i<2; i++)
+  for(int i=0; i<4; i++)
     values[i] = values_a[i];
   if (values[0] != -1){
-    for(int i = 0; i < 2; ++i){
+    for(int i = 0; i < 4; ++i){
       if (EEPROM.read(i) != values[i]){
         EEPROM.write(i, values[i]);
       }
@@ -62,7 +62,7 @@ int parseDataY(String data) {
 }
 
 int* parseDataM(String data) {
-  static int values[2];
+  static int values[4];
   values[0] = -1;
   if (data[0] == 'M') {
     int index = 0;
@@ -85,9 +85,9 @@ int parseDataD(String data) {
   if (data[0] == 'D') {
     ans = 0;
     Serial.print('<');
-    for(int i = 0; i < 2; ++i){
+    for(int i = 0; i < 4; ++i){
       Serial.print(EEPROM.read(i));
-      if(i<1)
+      if(i<3)
         Serial.print(',');
     }
     Serial.println('>');
