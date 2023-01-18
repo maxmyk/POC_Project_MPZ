@@ -21,6 +21,11 @@ std::string my_data1;
 char com_port3[] = "\\\\.\\COM3";
 SimpleSerial Serial3(com_port3, COM_BAUD_RATE);
 
+int location1 = 0, location2 = 0;
+int scale1 = 0, scale2 = 0;
+
+double coefficients[25] = {0.003, 0.013, 0.022, 0.013, 0.003, 0.013, 0.06, 0.098, 0.06, 0.013, 0.022, 0.098, 0.162, 0.098, 0.022, 0.013, 0.06, 0.098, 0.06, 0.013, 0.003, 0.013, 0.022, 0.013, 0.003};
+
 IBodyFrameSource* pBodyFrameSource = nullptr;
 
 void colorFrame(IKinectSensor* pSensor, std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
@@ -97,14 +102,25 @@ void colorFrame(IKinectSensor* pSensor, std::vector<std::tuple<CameraSpacePoint,
                     int y = (int)(colorSpacePoint.Y + 0.5f);
 
                     if (x >= 0 && x < nWidth && y >= 0 && y < nHeight) {
-                        int index = (y * nWidth + x);
-                        int red = int(pBuffer[index].rgbBlue);
-                        int green = int(pBuffer[index].rgbGreen);
-                        int blue = int(pBuffer[index].rgbRed);
+                        
+                        int red = 0;
+                        int green = 0;
+                        int blue = 0;
+                        size_t counter = 0;
+                        for (size_t i = y - 2; i <= y + 2; ++i) {
+                            for (size_t j = x - 2; j <= x + 2; ++j) {
+                                int index = (y * nWidth + x);
+                                red += int(pBuffer[index].rgbBlue) * coefficients[counter];
+                                green += int(pBuffer[index].rgbGreen) * coefficients[counter];
+                                blue += int(pBuffer[index].rgbRed) * coefficients[counter];
+                                counter++;
+                            }
+                        }
+                        
                         string data = "";
                         data += to_string(red) + ' ' + to_string(green) + ' ' + to_string(blue) + '\n';
                         OutputDebugStringA(data.c_str());
-                        if (red > 100 && blue < 70 && green < 70) {
+                        if (red > 110 && blue < 70 && green < 70) {
                             get<1>(target) = true;
                         }
                     }
@@ -120,7 +136,7 @@ void toStream(std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
 
     if (targets.size() != 0) {
 
-        // 3 port
+        // 1 port
 
         float x_data1 = get<0>(targets[0]).X;
         float y_data1 = get<0>(targets[0]).Y;
@@ -144,16 +160,16 @@ void toStream(std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
 
         if (state1) { my_data1 = "L1X"; }
         else { my_data1 = "X"; }
-        my_data1 += to_string((int)(120 - 120 * x_axis1 / PI - 1));
+        my_data1 += to_string((int)(120 - 120 * x_axis1 * scale1 / PI + location1));
         my_data1 += "Y";
-        my_data1 += to_string((int)(120 * y_axis1 / PI - 6));
+        my_data1 += to_string((int)(120 * y_axis1 * scale1 / PI + location1));
         //OutputDebugStringA(debug_str1.c_str());
         char* new_data1 = new char[my_data1.size()];
         for (int i = 0; i < my_data1.size(); ++i) {
             new_data1[i] = my_data1[i];
         }
 
-        // 4 port
+        // 2 port
 
         float x_data2 = get<0>(targets[targets.size() - 1]).X;
         float y_data2 = get<0>(targets[targets.size() - 1]).Y;
@@ -178,9 +194,9 @@ void toStream(std::vector<std::tuple<CameraSpacePoint, bool> > &targets) {
 
         if (state2) { my_data2 = "L1X"; }
         else { my_data2 = "X"; }
-        my_data2 += to_string((int)(120 - 120 * x_axis2 / PI - 1));
+        my_data2 += to_string((int)(120 - 120 * x_axis2 * scale2 / PI + location2));
         my_data2 += "Y";
-        my_data2 += to_string((int)(120 * y_axis2 / PI - 6));
+        my_data2 += to_string((int)(120 * y_axis2 * scale2 / PI + location2));
         //OutputDebugStringA(debug_str2.c_str());
         char* new_data2 = new char[my_data2.size()];
         for (int i = 0; i < my_data2.size(); ++i) {
@@ -216,6 +232,36 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
         string incoming = Serial3.ReadSerialPort(reply_wait_time, syntax_type);
         if (incoming == "S")
+            Serial1.WriteSerialPort("D");
+            string parametrs1 = Serial1.ReadSerialPort(reply_wait_time, syntax_type);
+            int idx = 0;
+            while (parametrs1[idx] != ',') {
+                location1 *= 10;
+                location1 += parametrs1[idx] - '0';
+                idx++;
+            }
+            idx++;
+            while (idx != parametrs1.size()) {
+                scale1 *= 10;
+                scale1 += parametrs1[idx] - '0';
+                idx++;
+            }
+
+            Serial2.WriteSerialPort("D");
+            string parametrs2 = Serial2.ReadSerialPort(reply_wait_time, syntax_type);
+            int idx = 0;
+            while (parametrs2[idx] != ',') {
+                location2 *= 10;
+                location2 += parametrs2[idx] - '0';
+                idx++;
+            }
+            idx++;
+            while (idx != parametrs2.size()) {
+                scale2 *= 10;
+                scale2 += parametrs2[idx] - '0';
+                idx++;
+            }
+
             break;
     }
 
