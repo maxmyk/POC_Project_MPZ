@@ -25,11 +25,8 @@ void loop() {
 
 void serialEvent() {
   serialData = Serial.readString();
-  int values[5];
-  int* values_a = parseDataM(serialData);
-  for(int i=0; i<5; i++)
-    values[i] = values_a[i];
-  if (values[5]){
+  int values[4];
+  if (parseDataM(serialData, values)){
     writeValuesToEEPROM(values);
   }
   if(parseDataD(serialData)){
@@ -57,14 +54,13 @@ int parseDataY(String data) {
   return data.toInt();
 }
 
-int* parseDataM(String data){
-  static int values[5];
-  values[5] = 0;
+uint8_t parseDataM(String data, int * values){
+  uint8_t flag = 0;
   if (data[0] == 'M') {
     int index = 0;
     String currentValue = "";
     bool negative = false;
-    values[5] = 1;
+    flag = 1;
     for (int i = 2; i < data.length(); i++) {
       if(data[i] == '-'){
         negative = true;
@@ -80,7 +76,7 @@ int* parseDataM(String data){
     }
     values[index] = (negative) ? -currentValue.toInt(): currentValue.toInt();
   }
-  return values;
+  return flag;
 }
 
 int parseDataD(String data) {
@@ -109,4 +105,3 @@ void writeValuesToEEPROM(int* values) {
     EEPROM.write(i * 2 + 1, (byte)value);
   }
 }
-
